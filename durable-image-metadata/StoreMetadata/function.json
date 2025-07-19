@@ -1,0 +1,16 @@
+{
+  "bindings": [
+    {
+      "name": "metadata",
+      "type": "activityTrigger",
+      "direction": "in"
+    },
+    {
+      "name": "row",
+      "type": "sql",
+      "direction": "out",
+      "commandText": "INSERT INTO ImageMetadata (FileName, FileSizeKB, Width, Height, Format) VALUES (@file_name, @file_size_kb, @width, @height, @format)",
+      "connectionStringSetting": "SqlConnectionString"
+    }
+  ]
+}
