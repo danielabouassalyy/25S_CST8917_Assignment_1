@@ -1,3 +1,7 @@
+Student: Daniel Abou-Assaly
+## YouTube Demo
+[YouTube Demo](https://youtu.be/DEi2O-Re9vo)
+
 ## Architecture Overview
 
 1. **Blob Trigger Function**: Watches the `images-input` container for new uploads and starts an orchestration.
