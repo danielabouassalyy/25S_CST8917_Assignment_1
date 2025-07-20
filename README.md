@@ -103,7 +103,7 @@
   - `UploadedOn` (DATETIME2)
 
 ---
-### 2.5 SQL Table Creation
+### SQL Table Creation
 
 ```sql
 CREATE TABLE ImageMetadata (
@@ -116,6 +116,7 @@ CREATE TABLE ImageMetadata (
   UploadedOn DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 ```
+---
 ## Code Deployment
 
 > [!NOTE] **BlobTriggerClient**  
