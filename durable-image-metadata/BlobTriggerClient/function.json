@@ -9,7 +9,7 @@
     },
     {
       "name": "starter",
-      "type": "orchestrationClient",
+      "type": "orchestrationClient",              
       "direction": "in"
     }
   ]
