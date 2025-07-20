@@ -34,75 +34,74 @@
 
 ### Resource Provisioning
 
-1. **Create resource group**:
-   ```bash
-   az group create -n image-processor-rg -l eastus
-   ```
-2. **Create storage account**:
-   ```bash
-   az storage account create \
-     -n mystorageacct123 \
-     -g image-processor-rg \
-     -l eastus \
-     --sku Standard_LRS
-   ```
-3. **Create blob containers**:
-   ```bash
-   az storage container create -n images-input --account-name mystorageacct123
-   ```
-4. **Deploy Function App**:
-   ```bash
-   az functionapp create \
-     -g image-processor-rg \
-     -n image-processor-func \
-     --storage-account mystorageacct123 \
-     --runtime python \
-     --functions-version 4
-   ```
-5. **Configure application settings**:
-   ```bash
-   az functionapp config appsettings set \
-     -n image-processor-func -g image-processor-rg \
-     --settings \
-       AzureWebJobsStorage="<connection-string>" \
-       FUNCTIONS_EXTENSION_VERSION="~4" \
-       FUNCTIONS_WORKER_RUNTIME="python" \
-       APPINSIGHTS_INSTRUMENTATIONKEY="<ikey>"
-   ```
 
-### Configuration
-
-- Update `local.settings.json` (for local dev) with:
-  ```json
-  {
-    "IsEncrypted": false,
-    "Values": {
-      "AzureWebJobsStorage": "<conn>",
-      "FUNCTIONS_WORKER_RUNTIME": "python",
-      "BlobStorageConnectionString": "<conn>"
-    }
-  }
-  ```
-
-### Deploying Functions
-
-```bash
-func azure functionapp publish image-processor-func
-```
+### Resource Group  
+**Type:** Azure Resource Group  
+**Name:** `image-metadata-rg`  
+**Location:** `East US`  
+**What to create:**  
+- Logical container for all project resources.
 
 ---
 
-## Local Development
-
-1. Clone the repo.
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the Functions host locally:
-   ```bash
-   func start
-   ```
-4. Upload sample images to `images-input` container or place them in `local.settings.json`-backed blob emulator.
+### Storage Account  
+**Type:** Storage Account (StorageV2)  
+**Name:** `imagemetadatastorage`  
+**Resource Group:** `image-metadata-rg`  
+**Location:** `East US`  
+**SKU:** `Standard_LRS`  
+**Kind:** `StorageV2`  
+**What to create:**  
+- Blob container named `images-input` (no public access).  
+- This container will raise the blob trigger when `.jpg`, `.png`, or `.gif` files arrive.
 
 ---
+
+### Function App  
+**Type:** Azure Function App (Consumption)  
+**Name:** `imagemetadatafuncapp`  
+**Resource Group:** `image-metadata-rg`  
+**Location:** `East US`  
+**Runtime:** Python 3.11  
+**Plan:** Consumption (Serverless)  
+**Storage Account:** `imagemetadatastorage`  
+**App Settings to configure:**  
+- `AzureWebJobsStorage` → connection string for `imagemetadatastorage`  
+- `FUNCTIONS_WORKER_RUNTIME` → `python`  
+- `WEBSITE_RUN_FROM_PACKAGE` → URL or path to your deployment package  
+- `SqlConnectionString` → connection string for your Azure SQL DB  
+
+---
+
+### Azure SQL Server  
+**Type:** Azure SQL Server  
+**Name:** `imagemetadata-sqlsrv`  
+**Resource Group:** `image-metadata-rg`  
+**Location:** `East US`  
+**Admin login:** `<yourAdminUser>`  
+**Admin password:** `<yourStrongPassword>`  
+**What to create:**  
+- Firewall rule `AllowAzureServices` to permit Function App outbound traffic.
+
+---
+
+### Azure SQL Database  
+**Type:** SQL Database  
+**Name:** `imagemetadata-db`  
+**Server:** `imagemetadata-sqlsrv`  
+**Resource Group:** `image-metadata-rg`  
+**Location:** `East US`  
+**Compute Tier:** `Basic` (or as required)  
+**What to create:**  
+- Table `ImageMetadata` with columns:  
+  - `Id` (INT, PK, IDENTITY)  
+  - `FileName` (NVARCHAR)  
+  - `FileSizeKB` (INT)  
+  - `Width` (INT)  
+  - `Height` (INT)  
+  - `Format` (NVARCHAR)  
+  - `UploadedOn` (DATETIME2)
+
+---
+
+
