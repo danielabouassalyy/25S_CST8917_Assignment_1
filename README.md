@@ -103,5 +103,169 @@
   - `UploadedOn` (DATETIME2)
 
 ---
+## Code Deployment
+
+> [!NOTE] **BlobTriggerClient**  
+> - `__init__.py`: Listens for new blobs in `images-input` and starts the orchestrator with the blob name.  
+> - `function.json`: Configures the blob-trigger binding and Durable Functions client output.
+
+> [!NOTE] **OrchestratorFunction**  
+> - `__init__.py`: Orchestrates the flow by invoking `ExtractMetadata` then `StoreMetadata`.  
+> - `function.json`: Declares the orchestrator trigger and hooks into the Durable Task hub.
+
+> [!NOTE] **ExtractMetadata**  
+> - `__init__.py`: Opens the image (via PIL), reads its size, dimensions, and format, then returns a metadata dict.  
+> - `function.json`: Defines the activity trigger so the orchestrator can invoke this function.
+
+> [!NOTE] **StoreMetadata**  
+> - `__init__.py`: Receives the metadata dict and uses a SQL output binding to insert a row into `ImageMetadata`.  
+> - `function.json`: Sets up the activity trigger and the SQL output binding targeting your Azure SQL Database.
 
 
+### blobtriggerclient
+'function.json'
+```bash
+{
+  "bindings": [
+    {
+      "name": "myblob",
+      "type": "blobTrigger",
+      "direction": "in",
+      "path": "images-input/{name}",
+      "connection": "BlobStorageConnectionString"
+    },
+    {
+      "name": "starter",
+      "type": "orchestrationClient",              
+      "direction": "in"
+    }
+  ]
+}
+`__init__.py`
+```bash
+import logging
+import azure.functions as func
+import azure.durable_functions as df
+
+async def main(
+    myblob: func.InputStream,
+    starter: df.DurableOrchestrationClient
+):
+    instance_id = await starter.start_new(
+        orchestration_function_name="OrchestratorFunction",
+        instance_id=None,
+        input=myblob.name
+    )
+    logging.info(f"✅ Started orchestration for blob '{myblob.name}', instance ID = {instance_id}")
+
+```
+### extractmetadata
+'function.json'
+```bash
+{
+  "scriptFile": "__init__.py",
+  "entryPoint": "main",
+  "bindings": [
+    {
+      "name": "name",
+      "type": "activityTrigger",
+      "direction": "in"
+    }
+  ]
+}
+
+```
+`__init__.py`
+```bash
+import logging
+from PIL import Image
+import os
+
+def main(name: str) -> dict:
+    # Download blob from the configured storage (the SDK will pick up your connection string)
+    from azure.storage.blob import BlobClient
+    conn_str = os.getenv("BlobStorageConnectionString")
+    blob = BlobClient.from_connection_string(conn_str, container_name="images-input", blob_name=name)
+    stream = blob.download_blob().readall()
+
+    img = Image.open(io.BytesIO(stream))
+    metadata = {
+        "file_name": name,
+        "file_size_kb": len(stream) // 1024,
+        "width": img.width,
+        "height": img.height,
+        "format": img.format
+    }
+    logging.info(f"🖼 Extracted metadata for {name}: {metadata}")
+    return metadata
+
+```
+### orchestratorfunction
+`function.json`
+```bash
+{
+  "scriptFile": "__init__.py",
+  "entryPoint": "main",
+  "bindings": [
+    {
+      "name": "context",
+      "type": "durableOrchestrationTrigger",
+      "direction": "in"
+    }
+  ]
+}
+
+```
+`__init__.py'
+```bash
+import azure.durable_functions as df
+
+def main(context: df.DurableOrchestrationContext):
+    image_name = context.get_input()
+    metadata   = yield context.call_activity("ExtractMetadata", image_name)
+    yield       context.call_activity("StoreMetadata", metadata)
+    return      metadata
+
+```
+### storemetadata
+
+`function.json`
+```bash
+{
+  "scriptFile": "__init__.py",
+  "entryPoint": "main",
+  "bindings": [
+    {
+      "name": "metadata",
+      "type": "activityTrigger",
+      "direction": "in"
+    },
+    {
+      "name": "row",
+      "type": "sql",
+      "direction": "out",
+      "commandText": "INSERT INTO ImageMetadata (FileName, FileSizeKB, Width, Height, Format) VALUES (@file_name, @file_size_kb, @width, @height, @format)",
+      "connectionStringSetting": "SqlConnectionString"
+    }
+  ]
+}
+
+```
+'__init__.py'
+
+```bash
+import logging
+import azure.functions as func
+
+def main(metadata: dict, row: func.Out[func.SqlRow]) -> None:
+    sql_row = func.SqlRow.from_dict({
+        "file_name": metadata["file_name"],
+        "file_size_kb": metadata["file_size_kb"],
+        "width": metadata["width"],
+        "height": metadata["height"],
+        "format": metadata["format"]
+    })
+    row.set(sql_row)
+    logging.info(f"💾 Queued SQL insert for '{metadata['file_name']}'")
+
+```
