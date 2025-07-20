@@ -141,6 +141,7 @@
     }
   ]
 }
+```
 `__init__.py`
 ```bash
 import logging
@@ -160,7 +161,7 @@ async def main(
 
 ```
 ### extractmetadata
-'function.json'
+`function.json`
 ```bash
 {
   "scriptFile": "__init__.py",
@@ -216,7 +217,7 @@ def main(name: str) -> dict:
 }
 
 ```
-`__init__.py'
+`__init__.py`
 ```bash
 import azure.durable_functions as df
 
@@ -251,7 +252,7 @@ def main(context: df.DurableOrchestrationContext):
 }
 
 ```
-'__init__.py'
+`__init__.py`
 
 ```bash
 import logging
