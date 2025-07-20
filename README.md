@@ -270,3 +270,35 @@ def main(metadata: dict, row: func.Out[func.SqlRow]) -> None:
     logging.info(f"💾 Queued SQL insert for '{metadata['file_name']}'")
 
 ```
+## Section 3: Deployment & Testing
+
+### 3.1 Publish to Azure  
+```bash
+# 1. Log in and select your subscription
+az login
+az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
+
+# 2. From your function app root folder, publish all functions
+func azure functionapp publish imagemetadatafuncapp --python
+
+### Testing the Image Metadata Pipeline
+
+1. **Upload an Image**  
+   - Add a `.jpg`, `.png`, or `.gif` file to the `images-input` container via Azure Portal or Storage Explorer.
+
+2. **Watch the Log Stream**  
+   - In Azure Portal, navigate to your Function App → **Monitoring** → **Log stream**.  
+   - Confirm you see:
+     - `Started orchestration for blob: <your‑file>`
+     - Calls to `ExtractMetadata` and `StoreMetadata`.
+
+3. **Query the SQL Table**  
+   - In Azure Portal, go to **SQL databases** → `imagemetadata-db` → **Query editor**.  
+   - Run:
+     ```sql
+     SELECT TOP 5 * 
+       FROM ImageMetadata 
+     ORDER BY UploadedOn DESC;
+     ```
+   - Verify a new row with your file’s name, size, dimensions, and format.
+
