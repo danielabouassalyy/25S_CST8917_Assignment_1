@@ -103,6 +103,19 @@
   - `UploadedOn` (DATETIME2)
 
 ---
+### 2.5 SQL Table Creation
+
+```sql
+CREATE TABLE ImageMetadata (
+  Id INT IDENTITY(1,1) PRIMARY KEY,
+  FileName NVARCHAR(260) NOT NULL,
+  FileSizeKB INT NOT NULL,
+  Width INT NOT NULL,
+  Height INT NOT NULL,
+  Format NVARCHAR(10) NOT NULL,
+  UploadedOn DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+```
 ## Code Deployment
 
 > [!NOTE] **BlobTriggerClient**  
